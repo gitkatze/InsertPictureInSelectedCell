@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} UserFormInsertPicture 
    Caption         =   "画像の貼り付け"
-   ClientHeight    =   5110
+   ClientHeight    =   5590
    ClientLeft      =   30
    ClientTop       =   370
    ClientWidth     =   4400
@@ -13,6 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 Option Explicit
 
 Const ThumbnailImageName As String = "ImageThumbnail"
@@ -30,11 +31,23 @@ Enum AlignHolizontal
     Center
 End Enum
 
+Enum ImagePlacementTypes
+    One
+    Two_Holizontal
+    Two_Virtical
+    Four
+End Enum
+
 Dim PicturePaths(0 To NumberOfPictures) As String
+Dim ImagePlacementType As ImagePlacementTypes
 
 Function GetThumbnailImageName(index)
     GetThumbnailImageName = ThumbnailImageName & index
 End Function
+
+Sub GetThumbnailImage(ByRef obj, index)
+    Set obj = Me.Controls(GetThumbnailImageName(index))
+End Sub
 
 Function GetPicturePathsCount()
     Dim i, count
@@ -44,15 +57,15 @@ Function GetPicturePathsCount()
     GetPicturePathsCount = count
 End Function
 
-Function ClearPicturePaths()
+Sub ClearPicturePaths()
     Dim i
     For i = LBound(PicturePaths) To UBound(PicturePaths)
         PicturePaths(i) = ""
     Next
     ClearThumbnails
-End Function
+End Sub
 
-Function ClearThumbnails()
+Sub ClearThumbnails()
     Dim i, obj, controlName
 
     For i = 1 To NumberOfPictures
@@ -60,10 +73,46 @@ Function ClearThumbnails()
         
         Set obj = Me.Controls(controlName)
         Set obj.Picture = Nothing
+        obj.ControlTipText = ""
     Next
-End Function
+End Sub
 
-Function UpdateThumbnailImages()
+Sub SetImagePlacementType(ptype As ImagePlacementTypes)
+    placementType = ptype
+End Sub
+
+Sub SetVisibleThumbnailsByPlacementType()
+    Select Case ImagePlacementType
+        Case ImagePlacementTypes.One
+            SetVisibleThumbnails True, False, False, False
+            
+        Case ImagePlacementTypes.Two_Holizontal
+            SetVisibleThumbnails True, True, False, False
+            
+        Case ImagePlacementTypes.Two_Virtical
+            SetVisibleThumbnails True, False, True, False
+            
+        Case ImagePlacementTypes.Four
+            SetVisibleThumbnails True, True, True, True
+            
+    End Select
+End Sub
+
+Sub SetVisibleThumbnails(ParamArray visibles())
+    Dim i As Integer
+    Dim j As Integer
+    Dim obj
+    j = 1
+    For i = LBound(visibles) To UBound(visibles)
+        If j > NumberOfPictures Then Exit For
+        GetThumbnailImage obj, j
+        If Not obj Is Nothing Then obj.Visible = visibles(i)
+        j = j + 1
+        Set obj = Nothing
+    Next
+End Sub
+
+Sub UpdateThumbnailImages()
     Dim i
     Dim controlName As String
     Dim msg As String
@@ -75,10 +124,10 @@ Function UpdateThumbnailImages()
     Dim obj
     For i = 1 To NumberOfPictures
         Set obj = Nothing
-        controlName = GetThumbnailImageName(i)
-        Set obj = Me.Controls(controlName)
+        GetThumbnailImage obj, i
         If Not obj Is Nothing Then
             obj.Picture = LoadPicture(PicturePaths(i))
+            obj.ControlTipText = PicturePaths(i)
         End If
     Next
 UpdateThumbnailImages_Err:
@@ -88,10 +137,18 @@ UpdateThumbnailImages_Err:
         msg = "Error in 'UpdateThumbnailImages'" & vbCrLf & "ErrorNumber: " & Err.Number & vbCrLf & vbCrLf & Err.Description
         MsgBox msg
         Err = 0
-        Exit Function
+        Exit Sub
     End If
     
-End Function
+End Sub
+
+Sub SetThumbnailsVisible(ParamArray thumbnailVisibles())
+    Dim i As Integer
+    For i = 0 To UBound(thumbnailVisibles)
+    
+    Next
+    
+End Sub
 
 Function SelectFile(Optional filter As String = "Excel File(*.xls),*.xls", Optional filterIndex As Integer = 1, Optional title As String = "ファイルを選択してください", Optional isMultiSelect As Boolean = False) As Variant
     SelectFile = Application.GetOpenFilename(filter, filterIndex, title, , isMultiSelect)
@@ -114,7 +171,7 @@ Function InsertPictureInRange(targetSheet As Worksheet, picturePath As String, t
     rangeAspect = rangeHeight / rangeWidth
         
     With pic.ShapeRange
-        .LockAspectRatio = msoCTrue
+        .LockAspectRatio = msoTrue
         
         If picAspect > rangeAspect Then
             .height = rangeHeight * parcentageInRange
@@ -144,14 +201,31 @@ Function InsertPictureInRange(targetSheet As Worksheet, picturePath As String, t
     
 End Function
 
-Function Insert4Pictures()
+Sub Insert1Picture()
+    InsertPictureInRange ActiveSheet, PicturePaths(1), Selection, AlignVirtical.Center, AlignHolizontal.Center, 1
+End Sub
+
+Sub Insert2PicturesHorizontal()
+    InsertPictureInRange ActiveSheet, PicturePaths(1), Selection, AlignVirtical.Center, AlignHolizontal.Left, 0.5
+    InsertPictureInRange ActiveSheet, PicturePaths(2), Selection, AlignVirtical.Center, AlignHolizontal.Right, 0.5
+End Sub
+
+Sub Insert2PicturesVirtical()
+    InsertPictureInRange ActiveSheet, PicturePaths(1), Selection, AlignVirtical.Top, AlignHolizontal.Center, 0.5
+    InsertPictureInRange ActiveSheet, PicturePaths(2), Selection, AlignVirtical.Bottom, AlignHolizontal.Center, 0.5
+End Sub
+
+Sub Insert4Pictures()
     InsertPictureInRange ActiveSheet, PicturePaths(1), Selection, AlignVirtical.Top, AlignHolizontal.Left, 0.5
     InsertPictureInRange ActiveSheet, PicturePaths(2), Selection, AlignVirtical.Top, AlignHolizontal.Right, 0.5
     InsertPictureInRange ActiveSheet, PicturePaths(3), Selection, AlignVirtical.Bottom, AlignHolizontal.Left, 0.5
     InsertPictureInRange ActiveSheet, PicturePaths(4), Selection, AlignVirtical.Bottom, AlignHolizontal.Right, 0.5
-End Function
+End Sub
 
 Private Sub ButtonClearThumbnail_Click()
+    If CheckBoxNotConfirmBeforeClear.Value = False Then
+        If MsgBox("すべての画像をクリアしますか？", vbYesNo, "確認") <> vbYes Then Exit Sub
+    End If
     ClearPicturePaths
     Me.Repaint
 End Sub
@@ -165,52 +239,26 @@ Private Sub buttonInsertPicture_Click()
         MsgBox "画像を選択してください"
         Exit Sub
     End If
-    
-    Dim obj, picturePath As String
-    Dim i, j
-    
-    
+        
     If LCase(TypeName(Selection)) = "range" Then
+                
+        Select Case ImagePlacementType
+        Case ImagePlacementTypes.One
+            Insert1Picture
         
-        If CheckBox4Corners.value Then
-            Insert4Pictures
-            Exit Sub
-        End If
+        Case ImagePlacementTypes.Two_Holizontal
+            Insert2PicturesHorizontal
         
-        Dim truncatedPaths(0 To NumberOfPictures) As String
-        j = 1
-        For i = 1 To NumberOfPictures
-            If PicturePaths(i) <> "" Then
-                truncatedPaths(j) = PicturePaths(i)
-                j = j + 1
-            End If
-        Next
-        
-        Select Case pictureCount
-        Case 1
-            picturePath = truncatedPaths(1)
-            If Dir(picturePath) = "" Then Exit Sub
+        Case ImagePlacementTypes.Two_Virtical
+            Insert2PicturesVirtical
             
-            InsertPictureInRange ActiveSheet, picturePath, Selection, AlignVirtical.Center, AlignHolizontal.Center, 1
-        Case 2
-            If (PicturePaths(1) <> "" And PicturePaths(2) <> "") Or (PicturePaths(3) <> "" And PicturePaths(4) <> "") Then
-                    InsertPictureInRange ActiveSheet, truncatedPaths(1), Selection, AlignVirtical.Center, AlignHolizontal.Left, 0.5
-                    InsertPictureInRange ActiveSheet, truncatedPaths(2), Selection, AlignVirtical.Center, AlignHolizontal.Right, 0.5
-            Else
-                If (PicturePaths(1) <> "" And PicturePaths(3) <> "") Or (PicturePaths(2) <> "" And PicturePaths(4) <> "") Then
-                    InsertPictureInRange ActiveSheet, truncatedPaths(1), Selection, AlignVirtical.Top, AlignHolizontal.Center, 0.5
-                    InsertPictureInRange ActiveSheet, truncatedPaths(2), Selection, AlignVirtical.Bottom, AlignHolizontal.Center, 0.5
-                Else
-                    Insert4Pictures
-                End If
-            End If
-        Case Else
+        Case ImagePlacementTypes.Four
             Insert4Pictures
+            
         End Select
         
     End If
     
-    Set obj = Nothing
 End Sub
 
 Private Sub ButtonSelectPicture_Click()
@@ -243,6 +291,24 @@ Function SelectImage(index)
     End If
 End Function
 
+Private Sub ComboBoxPlacementType_Change()
+    Select Case ComboBoxPlacementType.ListIndex
+        Case 0
+            ImagePlacementType = ImagePlacementTypes.One
+            
+        Case 1
+            ImagePlacementType = ImagePlacementTypes.Two_Holizontal
+        
+        Case 2
+            ImagePlacementType = ImagePlacementTypes.Two_Virtical
+        
+        Case 3
+            ImagePlacementType = ImagePlacementTypes.Four
+    End Select
+    
+    SetVisibleThumbnailsByPlacementType
+End Sub
+
 Private Sub ImageThumbnail1_Click()
     SelectImage 1
 End Sub
@@ -257,4 +323,16 @@ End Sub
 
 Private Sub ImageThumbnail4_Click()
     SelectImage 4
+End Sub
+
+Private Sub UserForm_Initialize()
+
+    ComboBoxPlacementType.Clear
+    
+    ComboBoxPlacementType.AddItem "1"
+    ComboBoxPlacementType.AddItem "2 (横)"
+    ComboBoxPlacementType.AddItem "2 (縦)"
+    ComboBoxPlacementType.AddItem "4"
+    
+    ComboBoxPlacementType.ListIndex = 0
 End Sub
